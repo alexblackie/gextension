@@ -97,8 +97,8 @@ def show_help
   puts "    search $QUERY      Given $QUERY, query the GNOME extensions API and return
                        a list of extension names and UUIDs."
   puts
-  puts "    install $UUID      Given $UUID; download, extract, and enable the extension
-                       that matches $UUID."
+  puts "    install $UUID...   Given one or more UUIDs, download, extract, and enable
+                       the extensions that match the given UUIDs."
   puts
 end
 
