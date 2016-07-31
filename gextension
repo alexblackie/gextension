@@ -17,22 +17,11 @@ end
 
 ##
 # gextension: query and install GNOME extensions from the command-line.
-#
-# Usage:
-#         ./gextension COMMAND ARGS
-#
-# Available commands:
-#
-#     search
-#         Given a search string provided by the user, query the GNOME
-#         extensions website API and pretty-print the results' name and UUID.
-#
-#     install
-#         Given a UUID provided by the user, fetch and install the GNOME
-#         extension for the local user.
-#
 ##
 
+# Query the GNOME Extensions website API.
+#
+# @param [String] query - the term to search
 def search(query)
   req = Net::HTTP.get(URI("https://extensions.gnome.org/extension-query/?page=1&search=#{query}"))
   exts = JSON.parse(req)["extensions"]
@@ -48,6 +37,9 @@ def search(query)
   puts
 end
 
+# Download, extract, and enable a GNOME Shell extension based on the given UUID.
+#
+# @param [Enumerable] uuids - a list of UUIDs to install
 def install(uuids)
   uuids.each do |uuid|
     puts "Installing #{uuid}"
