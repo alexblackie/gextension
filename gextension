@@ -1,0 +1,116 @@
+#!/usr/bin/env ruby
+
+require "net/http"
+require "json"
+require "open-uri"
+require "tempfile"
+
+# The GNOME Extensions website is awful and redirects to plain HTTP to download
+# the extension. Ruby correctly prevents this because it's dangerous and
+# stupid. So, unfortunately, we need to disable this protection in OpenURI.
+module OpenURI
+  def self.redirectable?(*args)
+    true
+  end
+end
+
+
+##
+# gextension: query and install GNOME extensions from the command-line.
+#
+# Usage:
+#         ./gextension COMMAND ARGS
+#
+# Available commands:
+#
+#     search
+#         Given a search string provided by the user, query the GNOME
+#         extensions website API and pretty-print the results' name and UUID.
+#
+#     install
+#         Given a UUID provided by the user, fetch and install the GNOME
+#         extension for the local user.
+#
+##
+
+def search(query)
+  req = Net::HTTP.get(URI("https://extensions.gnome.org/extension-query/?page=1&search=#{query}"))
+  exts = JSON.parse(req)["extensions"]
+
+  puts
+  puts "Found extensions:"
+  puts
+
+  exts.each do |e|
+    printf "    %-32s %s\n", e["name"], e["uuid"]
+  end
+
+  puts
+end
+
+def install(uuids)
+  uuids.each do |uuid|
+    puts "Installing #{uuid}"
+    req = Net::HTTP.get(URI("https://extensions.gnome.org/extension-info/?uuid=#{uuid}"))
+    extension = JSON.parse(req)
+
+    # TODO actually get real running GNOME version
+    # Their API sorts from highest -> lowest
+    highest_gnome_version = extension["shell_version_map"].keys.first
+    latest_extension_pk = extension["shell_version_map"][highest_gnome_version]["pk"]
+    puts "Grabbing latest version of #{latest_extension_pk} for GNOME #{highest_gnome_version}"
+
+    download_uri = URI("https://extensions.gnome.org/download-extension/#{uuid}.shell-extension.zip?version_tag=#{latest_extension_pk}")
+    # using open-uri because it 301's a bunch of times
+    zip = open(download_uri) do |f|
+      temp = Tempfile.new(["shellext", ".zip"])
+      temp.write(f.read)
+      temp.flush
+      temp
+    end
+
+    install_target = File.join(Dir.home, ".local/share/gnome-shell/extensions", uuid)
+    if File.exist?(install_target)
+      puts "This extension is already installed!"
+      puts "If you think this is incorrect, try deleting #{install_target}"
+      exit 1
+    end
+    Dir.mkdir(install_target)
+
+    # I really, really don't want dependencies. So, this...
+    puts "Unzipping #{zip.path} to #{install_target}"
+    `unzip -d #{install_target} #{zip.path}`
+
+    # This is maybe ok?
+    enabled_extensions = eval(`gsettings get org.gnome.shell enabled-extensions`)
+    enabled_extensions.push(uuid)
+    new_list = "['#{enabled_extensions.join("', '")}']"
+    `gsettings set org.gnome.shell enabled-extensions "#{new_list}"`
+  end
+end
+
+def show_help
+  puts "gextension - install GNOME extensions from the command-line."
+  puts
+  puts "Available commands:"
+  puts
+  puts "    search $QUERY      Given $QUERY, query the GNOME extensions API and return
+                       a list of extension names and UUIDs."
+  puts
+  puts "    install $UUID      Given $UUID; download, extract, and enable the extension
+                       that matches $UUID."
+  puts
+end
+
+opts = ARGV[1..-1]
+case ARGV[0]
+when "search"
+  search(opts)
+
+when "install"
+  install(opts)
+
+else
+  show_help()
+
+end
