@@ -41,6 +41,9 @@ end
 #
 # @param [Enumerable] uuids - a list of UUIDs to install
 def install(uuids)
+  extensions_path = File.join(Dir.home, ".local/share/gnome-shell/extensions")
+  FileUtils.mkdir_p(extensions_path) unless File.exist?(extensions_path)
+
   uuids.each do |uuid|
     puts "Installing #{uuid}"
     req = Net::HTTP.get(URI("https://extensions.gnome.org/extension-info/?uuid=#{uuid}"))
@@ -61,7 +64,7 @@ def install(uuids)
       temp
     end
 
-    install_target = File.join(Dir.home, ".local/share/gnome-shell/extensions", uuid)
+    install_target = File.join(extensions_path, uuid)
     if File.exist?(install_target)
       puts "This extension is already installed!"
       puts "If you think this is incorrect, try deleting #{install_target}"
