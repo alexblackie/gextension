@@ -68,7 +68,7 @@ def install(uuids)
     if File.exist?(install_target)
       puts "This extension is already installed!"
       puts "If you think this is incorrect, try deleting #{install_target}"
-      exit 1
+      exit 0
     end
     Dir.mkdir(install_target)
 
