@@ -23,6 +23,12 @@ end
 #
 # @param [String] query - the term to search
 def search(query)
+  if query.is_a?(Array)
+    # Fix for Ruby 2.1 where ARGV[1..-1] comes in as an array.
+    # TODO: remove when 2.1 completely EOL
+    query = query.join(" ")
+  end
+
   req = Net::HTTP.get(URI("https://extensions.gnome.org/extension-query/?page=1&search=#{query}"))
   exts = JSON.parse(req)["extensions"]
 
